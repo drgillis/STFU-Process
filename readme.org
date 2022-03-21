@@ -1,0 +1,11 @@
+#+TITLE:     STFU Process
+#+SUBTITLE:  Suppress Text From Un-terse Process
+#+AUTHOR:    Dan Gillis
+#+EMAIL:     (concat "dev" at-sign "dangillis.net")
+#+LANGUAGE:  en
+#+OPTIONS:   H:4 num:nil toc:2 p:t
+
+
+* About
+STFU Process is an Emacs minor-mode to curtail long outputs from processes,
+especially those that would generate long lines that would slow Emacs down.
