@@ -34,8 +34,10 @@
 ;;; Code:
 
 ;; NOTE: This mode is very much a work-in-progress at this stage
-;; plan for now: modify comint-preoutput-filter-functions
+;; plan for now: modify `comint-preoutput-filter-functions`
 ;; WARNING: This mode may not play nice with other output filters!
+
+;; TODO: add ability to use in buffers associated with process!
 
 (defgroup stfu-process nil
   "")
@@ -49,12 +51,24 @@
   ""
   :group 'stfu-process)
 
+(defvar-local stfu-process--original-preoutput-filters nil)
+
 
 (define-minor-mode stfu-process-mode
-  "Toggle STFU Process mode if in `comint-mode`.
+  "Toggle STFU Process mode.
 
 When enabled, STFU Process mode changes the process output
 filter to surpress output if prompt.
 "
   :init-value nil
-  :lighter " STFU")
+  :lighter " STFU"
+  (let ((buffer-process (get-buffer-process (current-buffer))))
+    (if stfu-process-mode
+        (progn
+          ;; revert process
+          ;; WARNING: This will dismiss any changes made to the process
+          ;; variables while STFU is active!
+          ;; - in future, may just remove new filter instead!
+          (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters))
+      (setq stfu-process--original-preoutput-filters comint-preoutput-filter-functions))))
+
