@@ -38,16 +38,17 @@
 ;; WARNING: This mode may not play nice with other output filters!
 
 ;; TODO: add ability to use in buffers associated with process!
+(require 'cl-lib)
 
 (defgroup stfu-process nil
   "")
 
 
-(defcustom stfu-process-supression-string ".\n"
+(defcustom stfu-process-suppression-string ".\n"
   ""
   :group 'stfu-process)
 
-(defcustom stfu-process-supression-long-line "\n[...STFU-Process continued]"
+(defcustom stfu-process-suppression-long-line-string "\n[...STFU-Process continued]"
   ""
   :group 'stfu-process)
 
@@ -55,6 +56,7 @@
 
 
 (defvar-local stfu-process--cur-output-length 0)
+(defvar-local stfu-process--cur-line-length 0)
 
 ;; Really hacky of way trying to tell if an output string may be the prompt
 ;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output 
@@ -64,20 +66,35 @@
 (defvar-local stfu-process--min-output-len-nonprompt 50)
 
 ;; in-future, nil value will prevent output from being suppressed
-(defvar-local stfu-process--max-output-len 10000)
+(defvar-local stfu-process--max-output-len 100000)
+
+(defvar-local stfu-process--max-output-line-len 5000)
 
 
 (defun stfu-process-preoutput-filter (string)
-  (let ((str-len (length string)))
+  (let* ((str-len (length string))
+         (has-newline (cl-search "\n" string :from-end t))
+         (last-newline-loc (or has-newline 0))
+         (len-after-newline (- str-len last-newline-loc))
+         ;; todo: allow user to choose whether to count backspaces
+         (num-backspaces (cl-count ?\b string)))
     (if (< str-len stfu-process--min-output-len-nonprompt)
-        ;; possibly the promopt: reset-output length
+        ;; possibly the prompt: reset-output length
         (setq stfu-process--cur-output-length 0)
       (setq stfu-process--cur-output-length (+ (length string)
-                                               stfu-process--cur-output-length))))
-  (if (> stfu-process--cur-output-length stfu-process--max-output-len)
-      stfu-process-supression-string
-    string))
-  
+                                               stfu-process--cur-output-length)))
+    (setq stfu-process--cur-line-length (if has-newline
+                                            len-after-newline
+                                          (+ stfu-process--cur-line-length
+                                             (- str-len
+                                                num-backspaces))))
+    (cond ((> stfu-process--cur-output-length stfu-process--max-output-len)
+           stfu-process-suppression-string)
+          ;; TODO: let user decide whether to fully suppress or to insert newline
+          ((> stfu-process--cur-line-length stfu-process--max-output-line-len)
+           (setq stfu-process--cur-line-length (+ str-len (length stfu-process-suppression-long-line-string)))
+           (concat stfu-process-suppression-long-line-string string))
+          (t string))))
 
 
 (defun stfu-process-add-preoutput-filter ()
