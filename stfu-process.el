@@ -54,21 +54,53 @@
 (defvar-local stfu-process--original-preoutput-filters nil)
 
 
+(defvar-local stfu-process--cur-output-length 0)
+
+;; Really hacky of way trying to tell if an output string may be the prompt
+;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output 
+;; - buffer and this value is far below that amount (typically 1024)
+;; TODO: improve this
+;; a better solution might involve the buffer's comint-prompt-regexp
+(defvar-local stfu-process--min-output-len-nonprompt 50)
+
+;; in-future, nil value will prevent output from being suppressed
+(defvar-local stfu-process--max-output-len 10000)
+
+
+(defun stfu-process-preoutput-filter (string)
+  (let ((str-len (length string)))
+    (if (< str-len stfu-process--min-output-len-nonprompt)
+        ;; possibly the promopt: reset-output length
+        (setq stfu-process--cur-output-length 0)
+      (setq stfu-process--cur-output-length (+ (length string)
+                                               stfu-process--cur-output-length))))
+  (if (> stfu-process--cur-output-length stfu-process--max-output-len)
+      stfu-process-supression-string
+    string))
+  
+
+
+(defun stfu-process-add-preoutput-filter ()
+  (setq-local comint-preoutput-filter-functions
+              (cons 'stfu-process-preoutput-filter
+                    comint-preoutput-filter-functions)))
+
+
 (define-minor-mode stfu-process-mode
   "Toggle STFU Process mode.
 
 When enabled, STFU Process mode changes the process output
-filter to surpress output if prompt.
+filter to suppress output if prompt.
 "
   :init-value nil
   :lighter " STFU"
   (let ((buffer-process (get-buffer-process (current-buffer))))
     (if stfu-process-mode
         (progn
-          ;; revert process
-          ;; WARNING: This will dismiss any changes made to the process
-          ;; variables while STFU is active!
-          ;; - in future, may just remove new filter instead!
-          (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters))
-      (setq stfu-process--original-preoutput-filters comint-preoutput-filter-functions))))
-
+          (setq stfu-process--original-preoutput-filters comint-preoutput-filter-functions)
+          (stfu-process-add-preoutput-filter))
+      ;; revert process
+      ;; WARNING: This will dismiss any changes made to the process
+      ;; variables while STFU is active!
+      ;; - in future, may just remove new filter instead!
+      (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters))))
