@@ -52,6 +52,17 @@
   ""
   :group 'stfu-process)
 
+(defcustom stfu-process-add-filter-placement -1
+  "Where to insert the STFU filter in `comint-preoutput-filter-functions`.
+
+A value can either be an integer or a function. A negative valued integer
+prepends the filter. A non-negative value appends the filter. A function
+should take the current filter list and the filter to be placed and return
+the new filter list.
+
+In the future, the integer may be used to place it in a specific place."
+  :group 'stfu-process)
+
 (defvar-local stfu-process--original-preoutput-filters nil)
 
 
@@ -97,10 +108,24 @@
           (t string))))
 
 
+
+(defun stfu-process--append-preoutput-filter ()
+  (append comint-preoutput-filter-functions '(stfu-process-preoutput-filter)))
+
+(defun stfu-process--prepend-preoutput-filter ()
+  (cons 'stfu-process-preoutput-filter
+        comint-preoutput-filter-functions))
+
+
 (defun stfu-process-add-preoutput-filter ()
-  (setq-local comint-preoutput-filter-functions
-              (cons 'stfu-process-preoutput-filter
-                    comint-preoutput-filter-functions)))
+  (let ((new-filter-list (if (numberp stfu-process-add-filter-placement)
+                             (if (>= stfu-process-add-filter-placement 0)
+                                 (stfu-process--append-preoutput-filter)
+                               (stfu-process--prepend-preoutput-filter))
+                           (funcall stfu-process-add-filter-placement
+                                    comint-preoutput-filter-functions
+                                    'stfu-process-preoutput-filter))))
+    (setq-local comint-preoutput-filter-functions new-filter-list)))
 
 
 (define-minor-mode stfu-process-mode
