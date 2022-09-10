@@ -38,6 +38,7 @@
 ;; WARNING: This mode may not play nice with other output filters!
 
 ;; TODO: add ability to use in buffers associated with process!
+;; TODO: try using set-process-filter rather than comint-preoutput-filter-functions?
 (require 'cl-lib)
 
 (defgroup stfu-process nil
@@ -48,9 +49,10 @@
   ""
   :group 'stfu-process)
 
-(defcustom stfu-process-suppression-long-line-string "\n[...STFU-Process continued]"
+(defcustom stfu-process-suppression-long-line-string "\n[...STFU-Process continued]\n"
   ""
   :group 'stfu-process)
+
 
 (defcustom stfu-process-add-filter-placement -1
   "Where to insert the STFU filter in `comint-preoutput-filter-functions`.
@@ -62,6 +64,12 @@ the new filter list.
 
 In the future, the integer may be used to place it in a specific place."
   :group 'stfu-process)
+
+;; not quite working yet
+(defvar stfu-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-!") 'stfu-now)
+    map))
 
 (defvar-local stfu-process--original-preoutput-filters nil)
 
@@ -77,10 +85,11 @@ In the future, the integer may be used to place it in a specific place."
 (defvar-local stfu-process--min-output-len-nonprompt 50)
 
 ;; in-future, nil value will prevent output from being suppressed
+;; TODO: these should be made non-private variables
+;; TODO?: these should be made custom
 (defvar-local stfu-process--max-output-len 100000)
 
 (defvar-local stfu-process--max-output-line-len 5000)
-
 
 (defun stfu-process-preoutput-filter (string)
   (let* ((str-len (length string))
@@ -128,6 +137,51 @@ In the future, the integer may be used to place it in a specific place."
     (setq-local comint-preoutput-filter-functions new-filter-list)))
 
 
+(defun stfu-process--set-cur-output (val)
+  (setq stfu-process--cur-output-length val))
+
+(defun stfu-process--set-cur-line (val)
+  (setq stfu-process--cur-line-length val))
+
+
+(defun stfu-process--set-cur-output-to-max ()
+  (setq stfu-process--cur-output-length (+ 1
+                                           stfu-process--max-output-len)))
+
+
+(defun stfu-process--set-cur-line-to-max ()
+  (setq stfu-process--cur-line-length (+ 1
+                                         stfu-process--max-output-line-len)))
+
+
+(defun stfu-process-ignore ()
+  "Immediately activate stfu filter but don't kill stream."
+  (interactive)
+  (let ((process (get-buffer-process (current-buffer))))
+    (when process
+      (stfu-process-mode)
+      (stfu-process--set-cur-output-to-max)
+      (stfu-process--set-cur-line-to-max))))
+  
+
+(defun stfu-process-now ()
+  "Immediately activate stfu filter and also kill stream if the
+process is pty-controlled."
+  (interactive)
+  (let ((process (get-buffer-process (current-buffer))))
+    (when process
+      (stfu-process-ignore)
+      (when (process-tty-name process)
+        (comint-interrupt-subjob)))))
+
+
+(defalias 'stfu-now 'stfu-process-now)
+
+(defalias 'stfu-ignore 'stfu-process-ignore)
+
+
+;; TODO: bug - doesn't seem like turning off mode actually works properly
+;; -- filters still in place
 (define-minor-mode stfu-process-mode
   "Toggle STFU Process mode.
 
