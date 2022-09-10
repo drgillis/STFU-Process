@@ -65,8 +65,7 @@ the new filter list.
 In the future, the integer may be used to place it in a specific place."
   :group 'stfu-process)
 
-;; not quite working yet
-(defvar stfu-mode-map
+(defvar stfu-process-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-!") 'stfu-now)
     map))
@@ -180,8 +179,6 @@ process is pty-controlled."
 (defalias 'stfu-ignore 'stfu-process-ignore)
 
 
-;; TODO: bug - doesn't seem like turning off mode actually works properly
-;; -- filters still in place
 (define-minor-mode stfu-process-mode
   "Toggle STFU Process mode.
 
@@ -190,6 +187,7 @@ filter to suppress output if prompt.
 "
   :init-value nil
   :lighter " STFU"
+  :keymap stfu-process-mode-map
   (let ((buffer-process (get-buffer-process (current-buffer))))
     (if stfu-process-mode
         (progn

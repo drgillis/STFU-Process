@@ -34,6 +34,12 @@ stream if the process is pty-controlled. The more polite can use the command
 attempt to interrupt the process. These commands both immediately suppress the
 output whereas activating the minor mode would not cause this to happen until
 the current output length exceeds the maximum length allowed.
+
+If you think you may regularly need this mode, it is recommended to set `C-!`
+to `stfu-now` globally by adding the following code to your init file
+`(global-set-key (kbd "C-!") 'stfu-now)`. It is also recommended that you look at
+your development practices, because you are probably doing something wrong if
+this is a frequent occurrence.
 * But Why?
 *tl;dr Bad development practices*
 
@@ -63,7 +69,5 @@ However, similar issues continue to bite me every once in a while.
 make a similarly named package?/ (stfu-now)
 
 .
-
 .
-
 .
