@@ -6,7 +6,6 @@
 #+OPTIONS:   H:4 num:nil toc:2 p:t
 
 
-* About
 STFU Process is an Emacs minor-mode to truncate long outputs from
 sub-processes. Its main goals are to:
 1. Prevent long lines from being print.
