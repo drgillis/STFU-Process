@@ -29,7 +29,7 @@
 
 
 ;;; Commentary:
-;; stfu-process-mode (Stop Text From Un-terminating Process)
+;; stfu-process-mode (Stop Text From Unterse Process)
 
 ;;; Code:
 
