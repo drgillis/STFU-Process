@@ -66,7 +66,8 @@ However, similar issues continue to bite me every once in a while.
 /If the package prefix is `stfu-process`, why do some commands just the prefix
 `stfu`?/ /Isn't that bad style?/ /Doesn't that offer a possible naming/
 /collision in the extraodinarily likely scenario where someone else decides to
-make a similarly named package?/ (stfu-now)
+make a similarly named package?/
+/This package just encourages bad development practices, you shoul-/ (stfu-now)
 
 .
 .
