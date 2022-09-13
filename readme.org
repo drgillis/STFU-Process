@@ -69,7 +69,8 @@ However, similar issues continue to bite me every once in a while.
 make a similarly named package?/
 /This package just encourages bad development practices, you shoul-/ (stfu-now)
 
-. \\
 .
-​​\\
+
+.
+
 .
