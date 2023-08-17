@@ -90,6 +90,37 @@ In the future, the integer may be used to place it in a specific place."
 
 (defvar-local stfu-process--max-output-line-len 5000)
 
+(defun stfu-process--reset-cur-output-length ()
+  (setq stfu-process--cur-output-length 0))
+
+(defun stfu-process--add-str-to-cur-output-length (str-len)
+  (setq stfu-process--cur-output-length (+ stfu-process--cur-output-length str-len)))
+
+
+(defun stfu-process--update-cur-line-length
+    (has-newline len-after-newline actual-str-len)
+  "actual-str-len := string minus backspaces"
+  (setq stfu-process--cur-line-length
+        (if has-newline
+            len-after-newline
+          (+ stfu-process-cur-line-length
+             (- str-len num-backspaces)))))
+
+(defun stfu-process--cur-output-too-long-p ()
+  (> stfu-process--cur-output-length stfu-process--max-output-len))
+
+
+(defun stfu-process--cur-line-too-long-p ()
+  (> stfu-process--cur-line-length stfu-process--max-output-line-len))
+
+
+(defun stfu-process--handle-too-long-line (str-len)
+  (setq stfu-process--cur-line-length
+        (+ str-len
+           (length stfu-process-suppression-long-line-string)))
+  (concat stfu-process-suppression-long-line-string string))
+           
+
 (defun stfu-process-preoutput-filter (string)
   (let* ((str-len (length string))
          (has-newline (cl-search "\n" string :from-end t))
@@ -99,22 +130,18 @@ In the future, the integer may be used to place it in a specific place."
          (num-backspaces (cl-count ?\b string)))
     (if (< str-len stfu-process--min-output-len-nonprompt)
         ;; possibly the prompt: reset-output length
-        (setq stfu-process--cur-output-length 0)
-      (setq stfu-process--cur-output-length (+ (length string)
-                                               stfu-process--cur-output-length)))
-    (setq stfu-process--cur-line-length (if has-newline
-                                            len-after-newline
-                                          (+ stfu-process--cur-line-length
-                                             (- str-len
-                                                num-backspaces))))
-    (cond ((> stfu-process--cur-output-length stfu-process--max-output-len)
-           stfu-process-suppression-string)
+        (stfu-process--reset-cur-output)
+      (stfu-process--add-str-to-cur-output-length str-len))
+    (stfu-process--update-cur-line-length has-newline
+                                          len-after-newline
+                                          (- str-len num-backspaces))
+    ;; TODO: instead of default string, should generate suppression string
+    ;; - e.g. can show how many characters were suppressed
+    (cond ((stfu-process--cur-output-too-long-p) stfu-process-suppression-string)
           ;; TODO: let user decide whether to fully suppress or to insert newline
-          ((> stfu-process--cur-line-length stfu-process--max-output-line-len)
-           (setq stfu-process--cur-line-length (+ str-len (length stfu-process-suppression-long-line-string)))
-           (concat stfu-process-suppression-long-line-string string))
+          ((stfu-process--cur-line-too-long-p)
+           (stfu-process--handle-too-long-line str-len))
           (t string))))
-
 
 
 (defun stfu-process--append-preoutput-filter ()
