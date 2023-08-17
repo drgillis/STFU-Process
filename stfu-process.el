@@ -43,7 +43,8 @@
 (require 'comint)
 
 (defgroup stfu-process nil
-  "Ignore long output from processes.")
+  "Ignore long output from processes."
+  :group 'processes)
 
 
 (defcustom stfu-process-suppression-string ".\n"
