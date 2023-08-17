@@ -8,7 +8,7 @@
 
 STFU Process is an Emacs minor-mode to truncate long outputs from
 sub-processes. Its main goals are to:
-1. Prevent long lines from being print.
+1. Prevent long lines from being printed.
 2. Prevent slowdowns caused by long output that takes longer to print than to compute.
 3. Prevent your mistakes from ruining your life.
 
@@ -19,7 +19,7 @@ magnitude.
 
 This package is most likely to be useful for processes controlled by
 pipes. This package was developed in particular for Windows Emacs, since it
-doesn't seem to have support for pty processes at the moment.
+doesn't have support for pty processes.
 * How to Use
 Simply enable STFU Process mode in a process buffer. All outputs returned
 longer than the defined maximum output length or individual line length will
@@ -29,11 +29,10 @@ be truncated and replaced with a customizable replacement string
 
 For those in a hurry to assert man's dominion over machine, the command
 `stfu-now` can be used to immediately activate the filter and interrupt the
-stream if the process is pty-controlled. The more polite can use the command
-`stfu-ignore`, which also immediately activates the filter but does not
-attempt to interrupt the process. These commands both immediately suppress the
-output whereas activating the minor mode would not cause this to happen until
-the current output length exceeds the maximum length allowed.
+stream if the process when possible (typically if it is pty-controlled). The
+more polite can use the command `stfu-ignore`, which also immediately
+activates the filter but does not attempt to interrupt the process. These
+commands both immediately suppress the output.
 
 If you think you may regularly need this mode, it is recommended to set `C-!`
 to `stfu-now` globally by adding the following code to your init file
@@ -46,7 +45,7 @@ this is a frequent occurrence.
 While using Python in Windows Emacs for data analysis, I would often end up
 with lists of 100,000+ objects each with string representations of over 100
 characters each. When exploring these data in the Python REPL, one bad command
-could result in Emacs attempting to print such a long line that the process
+would result in Emacs attempting to print such a long line that the process
 would essentially be bricked. Trying a keyboard interrupt would do nothing
 since the Python process is controlled by a pipe rather than a pty on Windows.
 
@@ -67,7 +66,7 @@ However, similar issues continue to bite me every once in a while.
 `stfu`?/ /Isn't that bad style?/ /Doesn't that offer a possible naming/
 /collision in the extraodinarily likely scenario where someone else decides to
 make a similarly named package?/
-/This package just encourages bad development practices, you shoul-/ (stfu-now)
+/This package just encourages bad development practices, you shoul-/ `(stfu-now)`
 
 .
 

@@ -1,4 +1,4 @@
-;;; stfu-process.el --- Ignore long output from processes -*- lexical-binding: t -*-
+;;; stfu-process.el --- Truncate long output from processes -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Dan Gillis
 
@@ -43,9 +43,8 @@
 (require 'comint)
 
 (defgroup stfu-process nil
-  "Ignore long output from processes."
+  "Truncate long output from processes."
   :group 'processes)
-
 
 (defcustom stfu-process-suppression-string ".\n"
   "The string to replace long outputs with."
