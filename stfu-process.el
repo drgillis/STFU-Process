@@ -115,6 +115,14 @@ In the future, the integer may be used to place it in a specific place."
 (defun stfu-process--cur-line-too-long-p ()
   (> stfu-process--cur-line-length stfu-process--max-output-line-len))
 
+(defun stfu-process--get-supression-length-str (str-len)
+  (concat "["
+          (number-to-string str-len)
+          " characters truncated]"))
+
+(defun stfu-process--handle-too-long-output (str-len)
+  (concat (stfu-process--get-supression-length-str str-len)
+          stfu-process-suppression-string))
 
 (defun stfu-process--handle-too-long-line (string str-len)
   (setq stfu-process--cur-line-length
@@ -139,7 +147,8 @@ In the future, the integer may be used to place it in a specific place."
                                           (- str-len num-backspaces))
     ;; TODO: instead of default string, should generate suppression string
     ;; - e.g. can show how many characters were suppressed
-    (cond ((stfu-process--cur-output-too-long-p) stfu-process-suppression-string)
+    (cond ((stfu-process--cur-output-too-long-p)
+           (stfu-process--handle-too-long-output str-len))
           ;; TODO: let user decide whether to fully suppress or to insert newline
           ((stfu-process--cur-line-too-long-p)
            (stfu-process--handle-too-long-line string str-len))
@@ -193,7 +202,7 @@ In the future, the integer may be used to place it in a specific place."
   
 
 (defun stfu-process-now ()
-  "Activate STFU filter and kill stream (if pty)."
+  "Activate STFU filter and kill stream (if possible)."
   (interactive)
   (let ((process (get-buffer-process (current-buffer))))
     (when process
