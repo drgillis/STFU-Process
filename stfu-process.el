@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2023 Dan Gillis
 
-;; Author: Dan Gillis <daniel.r.gillis@gmail.com>
+;; Author: Dan Gillis <dev@dangillis.net>
 ;; Version: 0.0.1
 ;; Package-Requires: cl-lib, comint
 ;; Keywords: comint, shell, process
