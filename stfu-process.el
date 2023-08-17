@@ -1,12 +1,12 @@
-;;; stfu-process.el --- Emacs Python Development Environment -*- lexical-binding: t -*-
+;;; stfu-process.el --- Ignore long output from processes -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Dan Gillis
+;; Copyright (C) 2023 Dan Gillis
 
 ;; Author: Dan Gillis <daniel.r.gillis@gmail.com>
-;; URL: https://github.com/drgillis/stfu-process
 ;; Version: 0.0.1
+;; Package-Requires: cl-lib, comint
 ;; Keywords: comint, shell, process
-;; Package-Requires: TBD
+;; URL: https://github.com/drgillis/stfu-process
 
 ;; Permission is hereby granted, free of charge, to any person obtaining
 ;; a copy of this software and associated documentation files (the
@@ -40,17 +40,20 @@
 ;; TODO: add ability to use in buffers associated with process!
 ;; TODO: try using set-process-filter rather than comint-preoutput-filter-functions?
 (require 'cl-lib)
+(require 'comint)
 
 (defgroup stfu-process nil
-  "")
+  "Ignore long output from processes.")
 
 
 (defcustom stfu-process-suppression-string ".\n"
-  ""
+  "The string stfu-process will replace long outputs with."
+  :type 'string
   :group 'stfu-process)
 
 (defcustom stfu-process-suppression-long-line-string "\n[...STFU-Process continued]\n"
-  ""
+  "The string stfu-process will replace long lines with."
+  :type 'string
   :group 'stfu-process)
 
 
@@ -77,7 +80,7 @@ In the future, the integer may be used to place it in a specific place."
 (defvar-local stfu-process--cur-line-length 0)
 
 ;; Really hacky of way trying to tell if an output string may be the prompt
-;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output 
+;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output
 ;; - buffer and this value is far below that amount (typically 1024)
 ;; TODO: improve this
 ;; a better solution might involve the buffer's comint-prompt-regexp
@@ -99,12 +102,11 @@ In the future, the integer may be used to place it in a specific place."
 
 (defun stfu-process--update-cur-line-length
     (has-newline len-after-newline actual-str-len)
-  "actual-str-len := string minus backspaces"
+  ;; actual-str-len := string minus backspaces
   (setq stfu-process--cur-line-length
         (if has-newline
             len-after-newline
-          (+ stfu-process-cur-line-length
-             (- str-len num-backspaces)))))
+          (+ stfu-process--cur-line-length actual-str-len))))
 
 (defun stfu-process--cur-output-too-long-p ()
   (> stfu-process--cur-output-length stfu-process--max-output-len))
@@ -114,7 +116,7 @@ In the future, the integer may be used to place it in a specific place."
   (> stfu-process--cur-line-length stfu-process--max-output-line-len))
 
 
-(defun stfu-process--handle-too-long-line (str-len)
+(defun stfu-process--handle-too-long-line (string str-len)
   (setq stfu-process--cur-line-length
         (+ str-len
            (length stfu-process-suppression-long-line-string)))
@@ -130,7 +132,7 @@ In the future, the integer may be used to place it in a specific place."
          (num-backspaces (cl-count ?\b string)))
     (if (< str-len stfu-process--min-output-len-nonprompt)
         ;; possibly the prompt: reset-output length
-        (stfu-process--reset-cur-output)
+        (stfu-process--reset-cur-output-length)
       (stfu-process--add-str-to-cur-output-length str-len))
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
@@ -140,7 +142,7 @@ In the future, the integer may be used to place it in a specific place."
     (cond ((stfu-process--cur-output-too-long-p) stfu-process-suppression-string)
           ;; TODO: let user decide whether to fully suppress or to insert newline
           ((stfu-process--cur-line-too-long-p)
-           (stfu-process--handle-too-long-line str-len))
+           (stfu-process--handle-too-long-line string str-len))
           (t string))))
 
 
@@ -191,8 +193,7 @@ In the future, the integer may be used to place it in a specific place."
   
 
 (defun stfu-process-now ()
-  "Immediately activate stfu filter and also kill stream if the
-process is pty-controlled."
+  "Activate STFU filter and kill stream (if pty)."
   (interactive)
   (let ((process (get-buffer-process (current-buffer))))
     (when process
@@ -210,8 +211,7 @@ process is pty-controlled."
   "Toggle STFU Process mode.
 
 When enabled, STFU Process mode changes the process output
-filter to suppress output if prompt.
-"
+filter to suppress output if prompt."
   :init-value nil
   :lighter " STFU"
   :keymap stfu-process-mode-map
@@ -225,3 +225,7 @@ filter to suppress output if prompt.
       ;; variables while STFU is active!
       ;; - in future, may just remove new filter instead!
       (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters))))
+
+
+(provide 'stfu-process)
+;;; stfu-process.el ends here
