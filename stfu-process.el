@@ -47,21 +47,31 @@
 
 
 (defcustom stfu-process-suppression-string ".\n"
-  "The string stfu-process will replace long outputs with."
+  "The string to replace long outputs with."
   :type 'string
   :group 'stfu-process)
 
 (defcustom stfu-process-suppression-long-line-string "\n[...STFU-Process continued]\n"
-  "The string stfu-process will replace long lines with."
+  "The string to separate long lines with."
   :type 'string
+  :group 'stfu-process)
+
+(defcustom stfu-process-total-limit 100000
+  "Output length limit before output is suppressed."
+  :type 'natnum
+  :group 'stfu-process)
+
+(defcustom stfu-process-line-limit 5000
+  "Output line length limit before output is broken up."
+  :type 'natnum
   :group 'stfu-process)
 
 
 (defcustom stfu-process-add-filter-placement -1
   "Where to insert the STFU filter in `comint-preoutput-filter-functions`.
 
-A value can either be an integer or a function. A negative valued integer
-prepends the filter. A non-negative value appends the filter. A function
+A value can either be an integer or a function.  A negative valued integer
+prepends the filter.  A non-negative value appends the filter.  A function
 should take the current filter list and the filter to be placed and return
 the new filter list.
 
@@ -83,15 +93,8 @@ In the future, the integer may be used to place it in a specific place."
 ;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output
 ;; - buffer and this value is far below that amount (typically 1024)
 ;; TODO: improve this
-;; a better solution might involve the buffer's comint-prompt-regexp
+;; - a better solution might involve the buffer's comint-prompt-regexp
 (defvar-local stfu-process--min-output-len-nonprompt 50)
-
-;; in-future, nil value will prevent output from being suppressed
-;; TODO: these should be made non-private variables
-;; TODO?: these should be made custom
-(defvar-local stfu-process--max-output-len 100000)
-
-(defvar-local stfu-process--max-output-line-len 5000)
 
 (defun stfu-process--reset-cur-output-length ()
   (setq stfu-process--cur-output-length 0))
@@ -109,11 +112,11 @@ In the future, the integer may be used to place it in a specific place."
           (+ stfu-process--cur-line-length actual-str-len))))
 
 (defun stfu-process--cur-output-too-long-p ()
-  (> stfu-process--cur-output-length stfu-process--max-output-len))
+  (> stfu-process--cur-output-length stfu-process-total-limit))
 
 
 (defun stfu-process--cur-line-too-long-p ()
-  (> stfu-process--cur-line-length stfu-process--max-output-line-len))
+  (> stfu-process--cur-line-length stfu-process-line-limit))
 
 (defun stfu-process--get-supression-length-str (str-len)
   (concat "["
@@ -183,12 +186,12 @@ In the future, the integer may be used to place it in a specific place."
 
 (defun stfu-process--set-cur-output-to-max ()
   (setq stfu-process--cur-output-length (+ 1
-                                           stfu-process--max-output-len)))
+                                           stfu-process-total-limit)))
 
 
 (defun stfu-process--set-cur-line-to-max ()
   (setq stfu-process--cur-line-length (+ 1
-                                         stfu-process--max-output-line-len)))
+                                         stfu-process-line-limit)))
 
 
 (defun stfu-process-ignore ()
