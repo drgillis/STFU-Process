@@ -4,8 +4,8 @@
 
 ;; Author: Dan Gillis <dev@dangillis.net>
 ;; Version: 0.0.1
-;; Package-Requires: cl-lib, comint
-;; Keywords: comint, shell, process
+;; Package-Requires: ((emacs "24.3"))
+;; Keywords: processes
 ;; URL: https://github.com/drgillis/stfu-process
 
 ;; Permission is hereby granted, free of charge, to any person obtaining
@@ -76,6 +76,8 @@ should take the current filter list and the filter to be placed and return
 the new filter list.
 
 In the future, the integer may be used to place it in a specific place."
+  :type '(choice (integer :tag "Placement in filter functions")
+                 (function :tag "Generate new fliter functions"))
   :group 'stfu-process)
 
 (defvar stfu-process-mode-map
@@ -97,44 +99,58 @@ In the future, the integer may be used to place it in a specific place."
 (defvar-local stfu-process--min-output-len-nonprompt 50)
 
 (defun stfu-process--reset-cur-output-length ()
+  "Reset current output length."
   (setq stfu-process--cur-output-length 0))
 
 (defun stfu-process--add-str-to-cur-output-length (str-len)
+  "Add STR-LEN to current output length."
   (setq stfu-process--cur-output-length (+ stfu-process--cur-output-length str-len)))
 
 
 (defun stfu-process--update-cur-line-length
-    (has-newline len-after-newline actual-str-len)
-  ;; actual-str-len := string minus backspaces
+    (has-newline len-after-newline true-str-len)
+  "Update current line length after processing string.
+If incoming string HAS-NEWLINE, then this length is LEN-AFTER-NEWLINE.
+Otherwise, add TRUE-STR-LEN to the existing length.  Note that the
+TRUE-STR-LEN subtracts any backspace characters from the incoming string
+length (so as to accomodate text that updates in-place)."
   (setq stfu-process--cur-line-length
         (if has-newline
             len-after-newline
-          (+ stfu-process--cur-line-length actual-str-len))))
+          (+ stfu-process--cur-line-length true-str-len))))
 
 (defun stfu-process--cur-output-too-long-p ()
+  "Check if current output is longer than total limit."
   (> stfu-process--cur-output-length stfu-process-total-limit))
 
 
 (defun stfu-process--cur-line-too-long-p ()
+  "Check if current line is longer than line limit."
   (> stfu-process--cur-line-length stfu-process-line-limit))
 
 (defun stfu-process--get-supression-length-str (str-len)
+  "Generate a string showing the number (STR-LEN) of characters suppressed."
   (concat "["
           (number-to-string str-len)
           " characters truncated]"))
 
 (defun stfu-process--handle-too-long-output (str-len)
+  "Handle output that has exceeded total limit.
+Take STR-LEN to generate information about suppressed text."
   (concat (stfu-process--get-supression-length-str str-len)
           stfu-process-suppression-string))
 
-(defun stfu-process--handle-too-long-line (string str-len)
+(defun stfu-process--handle-too-long-line (string true-str-len)
+    "Handle STRING when line length exceeds limit.
+Take TRUE-STR-LEN to properly update line length."
   (setq stfu-process--cur-line-length
-        (+ str-len
+        (+ true-str-len
            (length stfu-process-suppression-long-line-string)))
   (concat stfu-process-suppression-long-line-string string))
            
 
 (defun stfu-process-preoutput-filter (string)
+  "Truncate incoming STRING if line or total output is too long."
   (let* ((str-len (length string))
          (has-newline (cl-search "\n" string :from-end t))
          (last-newline-loc (or has-newline 0))
@@ -154,19 +170,21 @@ In the future, the integer may be used to place it in a specific place."
            (stfu-process--handle-too-long-output str-len))
           ;; TODO: let user decide whether to fully suppress or to insert newline
           ((stfu-process--cur-line-too-long-p)
-           (stfu-process--handle-too-long-line string str-len))
+           (stfu-process--handle-too-long-line string (- str-len num-backspaces)))
           (t string))))
 
 
 (defun stfu-process--append-preoutput-filter ()
+  "Add the preoutput-filter to the end of the list of filter functions."
   (append comint-preoutput-filter-functions '(stfu-process-preoutput-filter)))
 
 (defun stfu-process--prepend-preoutput-filter ()
+  "Add the preoutput-filter to the beginning of the list of filter functions."
   (cons 'stfu-process-preoutput-filter
         comint-preoutput-filter-functions))
 
-
 (defun stfu-process-add-preoutput-filter ()
+  "Add the preoutput-filter to the list of filter functions."
   (let ((new-filter-list (if (numberp stfu-process-add-filter-placement)
                              (if (>= stfu-process-add-filter-placement 0)
                                  (stfu-process--append-preoutput-filter)
@@ -178,18 +196,24 @@ In the future, the integer may be used to place it in a specific place."
 
 
 (defun stfu-process--set-cur-output (val)
+  "Set current total length to VAL."
   (setq stfu-process--cur-output-length val))
 
 (defun stfu-process--set-cur-line (val)
+  "Set current line length to VAL."
   (setq stfu-process--cur-line-length val))
 
-
+;; TODO: Should filtration instead be toggled with flag?
 (defun stfu-process--set-cur-output-to-max ()
+  "Set current total length to a value exceeding the maximum allowed.
+This will initiate the truncation process."
   (setq stfu-process--cur-output-length (+ 1
                                            stfu-process-total-limit)))
 
-
+;; TODO: Should line filtration instead be toggled with flag?
 (defun stfu-process--set-cur-line-to-max ()
+    "Set current line length to a value exceeding the maximum allowed.
+This will initiate the truncation process."
   (setq stfu-process--cur-line-length (+ 1
                                          stfu-process-line-limit)))
 
@@ -214,10 +238,9 @@ In the future, the integer may be used to place it in a specific place."
         (comint-interrupt-subjob)))))
 
 
-(defalias 'stfu-now 'stfu-process-now)
-
-(defalias 'stfu-ignore 'stfu-process-ignore)
-
+;; optional aliases
+; (defalias 'stfu-now 'stfu-process-now)
+; (defalias 'stfu-ignore 'stfu-process-ignore)
 
 (define-minor-mode stfu-process-mode
   "Toggle STFU Process mode.
@@ -227,16 +250,16 @@ filter to suppress output if prompt."
   :init-value nil
   :lighter " STFU"
   :keymap stfu-process-mode-map
-  (let ((buffer-process (get-buffer-process (current-buffer))))
-    (if stfu-process-mode
-        (progn
-          (setq stfu-process--original-preoutput-filters comint-preoutput-filter-functions)
-          (stfu-process-add-preoutput-filter))
-      ;; revert process
-      ;; WARNING: This will dismiss any changes made to the process
-      ;; variables while STFU is active!
-      ;; - in future, may just remove new filter instead!
-      (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters))))
+  (if stfu-process-mode
+      (progn
+        (setq stfu-process--original-preoutput-filters
+              comint-preoutput-filter-functions)
+        (stfu-process-add-preoutput-filter))
+    ;; revert process
+    ;; WARNING: This will dismiss any changes made to the process
+    ;; variables while STFU is active!
+    ;; - in future, may just remove new filter instead!
+    (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters)))
 
 
 (provide 'stfu-process)
