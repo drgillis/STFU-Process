@@ -28,14 +28,20 @@ be truncated and replaced with a customizable replacement string
 `stfu-process-supression-long-line-string`, respectively).
 
 For those in a hurry to assert man's dominion over machine, the command
-`stfu-now` can be used to immediately activate the filter and interrupt the
-stream if the process when possible (typically if it is pty-controlled). The
-more polite can use the command `stfu-ignore`, which also immediately
-activates the filter but does not attempt to interrupt the process. These
-commands both immediately suppress the output.
+`stfu-process-now` can be used to immediately activate the filter and
+interrupt the stream if the process when possible (typically if it is
+pty-controlled). The more polite can use the command `stfu-process-ignore`,
+which also immediately activates the filter but does not attempt to interrupt
+the process. These commands both immediately suppress the output. It is
+recommended to alias these commands as follows:
+
+#+begin_src elisp
+  (defalias 'stfu-now 'stfu-process-now)
+  (defalias 'stfu-ignore 'stfu-ignore-now)
+#+end_src
 
 If you think you may regularly need this mode, it is recommended to set `C-!`
-to `stfu-now` globally by adding the following code to your init file
+to `stfu-process-now` globally by adding the following code to your init file
 `(global-set-key (kbd "C-!") 'stfu-now)`. It is also recommended that you look at
 your development practices, because you are probably doing something wrong if
 this is a frequent occurrence.
@@ -62,11 +68,11 @@ Sometimes you don't have a choice.
 significantly more succinct string representation?/ I did do this eventually.
 However, similar issues continue to bite me every once in a while.
 
-/If the package prefix is `stfu-process`, why do some commands just the prefix
-`stfu`?/ /Isn't that bad style?/ /Doesn't that offer a possible naming/
-/collision in the extraodinarily likely scenario where someone else decides to
-make a similarly named package?/
-/This package just encourages bad development practices, you shoul-/ `(stfu-now)`
+/If the package prefix is `stfu-process`, why do you recommend commands that
+use the prefix `stfu`?/ /Isn't that bad style?/ /Doesn't that offer a possible
+naming/ /collision in the extraodinarily likely scenario where someone else
+decides to make a similarly named package?/ /This package just encourages bad
+development practices, you shoul-/ `(stfu-now)`
 
 .
 
