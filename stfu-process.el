@@ -156,6 +156,14 @@ Take TRUE-STR-LEN to properly update line length."
   (< (length string) stfu-process--min-output-len-nonprompt))
 
 
+(defun stfu-process--handle-output-length (string)
+  "Handle the action needed to update output length based on STRING."
+  (if (stfu-process--should-reset-output-length-p string)
+        ;; possibly the prompt: reset-output length
+        (stfu-process--reset-cur-output-length)
+    (stfu-process--add-str-len-to-cur-output-length (length string))))
+
+
 (defun stfu-process-preoutput-filter (string)
   "Truncate incoming STRING if line or total output is too long."
   (let* ((str-len (length string))
@@ -164,10 +172,7 @@ Take TRUE-STR-LEN to properly update line length."
          (len-after-newline (- str-len last-newline-loc))
          ;; todo: allow user to choose whether to count backspaces
          (num-backspaces (cl-count ?\b string)))
-    (if (stfu-process--should-reset-output-length-p string)
-        ;; possibly the prompt: reset-output length
-        (stfu-process--reset-cur-output-length)
-      (stfu-process--add-str-len-to-cur-output-length str-len))
+    (stfu-process--handle-output-length string)
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
                                           (- str-len num-backspaces))
