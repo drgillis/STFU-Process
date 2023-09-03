@@ -147,7 +147,7 @@ Take TRUE-STR-LEN to properly update line length."
         (+ true-str-len
            (length stfu-process-suppression-long-line-string)))
   (concat stfu-process-suppression-long-line-string string))
-           
+
 
 (defun stfu-process-preoutput-filter (string)
   "Truncate incoming STRING if line or total output is too long."
@@ -226,7 +226,7 @@ This will initiate the truncation process."
       (stfu-process-mode)
       (stfu-process--set-cur-output-to-max)
       (stfu-process--set-cur-line-to-max))))
-  
+
 
 (defun stfu-process-now ()
   "Activate STFU filter and kill stream (if possible)."
