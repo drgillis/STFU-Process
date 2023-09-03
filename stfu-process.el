@@ -164,26 +164,29 @@ Take TRUE-STR-LEN to properly update line length."
     (stfu-process--add-str-len-to-cur-output-length (length string))))
 
 
-(defun stfu-process-preoutput-filter (string)
-  "Truncate incoming STRING if line or total output is too long."
+(defun stfu-process--handle-line-length (string)
+  "Handle the actions needed to update line length based on STRING."
   (let* ((str-len (length string))
          (has-newline (cl-search "\n" string :from-end t))
          (last-newline-loc (or has-newline 0))
          (len-after-newline (- str-len last-newline-loc))
          ;; todo: allow user to choose whether to count backspaces
          (num-backspaces (cl-count ?\b string)))
-    (stfu-process--handle-output-length string)
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
                                           (- str-len num-backspaces))
-    ;; TODO: instead of default string, should generate suppression string
-    ;; - e.g. can show how many characters were suppressed
     (cond ((stfu-process--cur-output-too-long-p)
            (stfu-process--handle-too-long-output str-len))
           ;; TODO: let user decide whether to fully suppress or to insert newline
           ((stfu-process--cur-line-too-long-p)
            (stfu-process--handle-too-long-line string (- str-len num-backspaces)))
           (t string))))
+
+
+(defun stfu-process-preoutput-filter (string)
+  "Truncate incoming STRING if line or total output is too long."
+    (stfu-process--handle-output-length string)
+    (stfu-process--handle-line-length string))
 
 
 (defun stfu-process--append-preoutput-filter ()
