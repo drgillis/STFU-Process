@@ -84,8 +84,6 @@ In the future, the integer may be used to place it in a specific place."
     (define-key map (kbd "C-!") 'stfu-now)
     map))
 
-(defvar-local stfu-process--original-preoutput-filters nil)
-
 (defvar-local stfu-process--cur-output-length 0)
 (defvar-local stfu-process--cur-line-length 0)
 
@@ -197,11 +195,11 @@ backspaces in the string."
 
 (defun stfu-process--append-preoutput-filter ()
   "Add the preoutput-filter to the end of the list of filter functions."
-  (append comint-preoutput-filter-functions '(stfu-process-preoutput-filter)))
+  (append comint-preoutput-filter-functions #'(stfu-process-preoutput-filter)))
 
 (defun stfu-process--prepend-preoutput-filter ()
   "Add the preoutput-filter to the beginning of the list of filter functions."
-  (cons 'stfu-process-preoutput-filter
+  (cons #'stfu-process-preoutput-filter
         comint-preoutput-filter-functions))
 
 (defun stfu-process-add-preoutput-filter ()
@@ -212,8 +210,12 @@ backspaces in the string."
                                (stfu-process--prepend-preoutput-filter))
                            (funcall stfu-process-add-filter-placement
                                     comint-preoutput-filter-functions
-                                    'stfu-process-preoutput-filter))))
+                                    #'stfu-process-preoutput-filter))))
     (setq-local comint-preoutput-filter-functions new-filter-list)))
+
+(defun stfu-process-remove-preoutput-filter ()
+  "Remove the preoutput-filter from the list of filter functions."
+  (remq #'stfu-process-preoutput-filter comint-preoutput-filter-functions))
 
 (defun stfu-process--set-cur-output (val)
   "Set current total length to VAL."
@@ -268,15 +270,12 @@ filter to suppress output if prompt."
   :lighter " STFU"
   :keymap stfu-process-mode-map
   (if stfu-process-mode
-      (progn
-        (setq stfu-process--original-preoutput-filters
-              comint-preoutput-filter-functions)
-        (stfu-process-add-preoutput-filter))
+      (stfu-process-add-preoutput-filter)
     ;; revert process
     ;; WARNING: This will dismiss any changes made to the process
     ;; variables while STFU is active!
     ;; - in future, may just remove new filter instead!
-    (setq comint-preoutput-filter-functions stfu-process--original-preoutput-filters)))
+    (stfu-process-remove-preoutput-filter)))
 
 (provide 'stfu-process)
 ;;; stfu-process.el ends here
