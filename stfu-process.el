@@ -102,7 +102,7 @@ In the future, the integer may be used to place it in a specific place."
   "Reset current output length."
   (setq stfu-process--cur-output-length 0))
 
-(defun stfu-process--add-str-to-cur-output-length (str-len)
+(defun stfu-process--add-str-len-to-cur-output-length (str-len)
   "Add STR-LEN to current output length."
   (setq stfu-process--cur-output-length (+ stfu-process--cur-output-length str-len)))
 
@@ -167,7 +167,7 @@ Take TRUE-STR-LEN to properly update line length."
     (if (stfu-process--should-reset-output-length-p string)
         ;; possibly the prompt: reset-output length
         (stfu-process--reset-cur-output-length)
-      (stfu-process--add-str-to-cur-output-length str-len))
+      (stfu-process--add-str-len-to-cur-output-length str-len))
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
                                           (- str-len num-backspaces))
