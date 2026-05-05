@@ -21,15 +21,17 @@ This package is most likely to be useful for processes controlled by
 pipes. This package was developed in particular for Windows Emacs, since it
 doesn't have support for pty processes.
 * How to Use
-Simply enable STFU Process mode in a process buffer. All outputs returned
-longer than the defined maximum output length or individual line length will
-be truncated and replaced with a customizable replacement string
-(`stfu-process-supression-string` and
-`stfu-process-supression-long-line-string`, respectively).
+Requires Emacs 27.1 or later.
+
+Simply enable STFU Process mode in a comint process buffer (`M-x
+stfu-process-mode`). All outputs returned longer than the defined maximum
+output length or individual line length will be truncated and replaced with a
+customizable replacement string (`stfu-process-suppression-string` and
+`stfu-process-suppression-long-line-string`, respectively).
 
 For those in a hurry to assert man's dominion over machine, the command
 `stfu-process-now` can be used to immediately activate the filter and
-interrupt the stream if the process when possible (typically if it is
+interrupt the stream of the process when possible (typically if it is
 pty-controlled). The more polite can use the command `stfu-process-ignore`,
 which also immediately activates the filter but does not attempt to interrupt
 the process. These commands both immediately suppress the output. It is
@@ -37,8 +39,12 @@ recommended to alias these commands as follows:
 
 #+begin_src elisp
   (defalias 'stfu-now 'stfu-process-now)
-  (defalias 'stfu-ignore 'stfu-ignore-now)
-#+end_src
+  (defalias 'stfu-ignore 'stfu-process-ignore)
+  #+end_src
+
+The default limits are 100,000 characters for total output
+(`stfu-process-total-limit`) and 5,000 characters per line
+(`stfu-process-line-limit`). Customize these according to your pain tolerance.
 
 If you think you may regularly need this mode, it is recommended to set `C-!`
 to `stfu-process-now` globally by adding the following code to your init file
@@ -70,7 +76,7 @@ However, similar issues continue to bite me every once in a while.
 
 /If the package prefix is `stfu-process`, why do you recommend commands that
 use the prefix `stfu`?/ /Isn't that bad style?/ /Doesn't that offer a possible
-naming/ /collision in the extraodinarily likely scenario where someone else
+naming/ /collision in the extraordinarily likely scenario where someone else
 decides to make a similarly named package?/ /This package just encourages bad
 development practices, you shoul-/ `(stfu-now)`
 
