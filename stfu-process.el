@@ -107,15 +107,15 @@ In the future, the integer may be used to place it in a specific place."
   "Update current line length after processing string.
 
 If incoming string HAS-NEWLINE, then this length is LEN-AFTER-NEWLINE.
-Otherwise, add TRUE-STR-LEN to the existing length.  Note that the
-TRUE-STR-LEN subtracts any backspace characters from the incoming string
-length (so as to accomodate text that updates in-place).
+Otherwise, add TRUE-STR-LEN to the existing length.  TRUE-STR-LEN accounts
+for backspaces by subtracting twice the backspace count (once for the
+backspace character itself, once for the character it erases).
 
-BUG NOTE: this does not handle backspaces properly if newlines are present!"
+Note: backspaces after a newline in the same string are not fully handled."
   (setq stfu-process--cur-line-length
-        (if has-newline
-            len-after-newline
-          (+ stfu-process--cur-line-length true-str-len))))
+        (max 0 (if has-newline
+                   len-after-newline
+                 (+ stfu-process--cur-line-length true-str-len)))))
 
 (defun stfu-process--cur-output-too-long-p ()
   "Check if current output is longer than total limit."
@@ -184,9 +184,9 @@ backspaces in the string."
          (has-newline (cl-search "\n" string :from-end t))
          (last-newline-loc (or has-newline 0))
          (len-after-newline (- str-len last-newline-loc))
-         ;; todo: allow user to choose whether to count backspaces
+         ;; Each backspace doesn't add a char AND erases a previous char
          (num-backspaces (cl-count ?\b string))
-         (true-line-length (- (length string) num-backspaces)))
+         (true-line-length (- (length string) (* 2 num-backspaces))))
     (stfu-process--maybe-add-output-length string)
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
