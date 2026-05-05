@@ -210,5 +210,90 @@
     (stfu-process-mode -1)
     (should-not (memq 'stfu-process-preoutput-filter comint-preoutput-filter-functions))))
 
+;;; Integration tests with real subprocess
+
+(defun stfu-process-test--wait-for-output (buf pattern &optional timeout)
+  "Wait for PATTERN to appear in BUF, with TIMEOUT seconds (default 5)."
+  (let ((timeout (or timeout 5))
+        (start-time (float-time))
+        (proc (get-buffer-process buf)))
+    (while (and proc
+                (< (- (float-time) start-time) timeout)
+                (not (with-current-buffer buf
+                       (string-match-p pattern (buffer-string)))))
+      (accept-process-output proc 0.1))))
+
+(ert-deftest stfu-process-test-integration-truncates-long-output ()
+  "Integration test: verify truncation with real subprocess."
+  (let ((buf (make-comint "stfu-test-proc" "sh" nil)))
+    (unwind-protect
+        (with-current-buffer buf
+          ;; Wait for shell prompt
+          (stfu-process-test--wait-for-output buf "\\$ ")
+          ;; Now enable stfu-process and configure
+          (stfu-process-mode 1)
+          (setq-local stfu-process-total-limit 100)
+          (setq-local stfu-process-line-limit 5000)
+          (setq-local stfu-process--min-output-len-nonprompt 10)
+          ;; Generate output exceeding limit (seq 1 200 produces ~600 chars)
+          (comint-send-string (get-buffer-process buf) "seq 1 200\n")
+          ;; Wait for truncation message
+          (stfu-process-test--wait-for-output buf "truncated")
+          ;; Buffer should contain truncation message
+          (should (string-match-p "truncated" (buffer-string))))
+      ;; Cleanup
+      (when (get-buffer-process buf)
+        (delete-process (get-buffer-process buf)))
+      (kill-buffer buf))))
+
+(ert-deftest stfu-process-test-integration-long-line-gets-broken ()
+  "Integration test: verify long lines get separator inserted.
+Note: This tests the scenario where output arrives in chunks that
+build up a long line - the realistic case for slow streaming output."
+  (let ((buf (make-comint "stfu-test-proc" "sh" nil)))
+    (unwind-protect
+        (with-current-buffer buf
+          ;; Wait for shell prompt
+          (stfu-process-test--wait-for-output buf "\\$ ")
+          ;; Now enable stfu-process and configure
+          (stfu-process-mode 1)
+          (setq-local stfu-process-total-limit 100000)
+          (setq-local stfu-process-line-limit 50)
+          ;; Use multiple printf calls to simulate chunked output on same line
+          ;; Each printf outputs without newline, building up a long line
+          (comint-send-string (get-buffer-process buf)
+                              "for i in 1 2 3; do printf '%030s' | tr ' ' 'x'; sleep 0.1; done; echo\n")
+          ;; Wait for separator message (90 x's across 3 chunks, limit is 50)
+          (stfu-process-test--wait-for-output buf "STFU-Process continued")
+          ;; Buffer should contain the line-break message
+          (should (string-match-p "STFU-Process continued" (buffer-string))))
+      ;; Cleanup
+      (when (get-buffer-process buf)
+        (delete-process (get-buffer-process buf)))
+      (kill-buffer buf))))
+
+(ert-deftest stfu-process-test-integration-normal-output-unchanged ()
+  "Integration test: normal output passes through unchanged."
+  (let ((buf (make-comint "stfu-test-proc" "sh" nil)))
+    (unwind-protect
+        (with-current-buffer buf
+          ;; Wait for shell prompt
+          (stfu-process-test--wait-for-output buf "\\$ ")
+          ;; Now enable stfu-process and configure
+          (stfu-process-mode 1)
+          (setq-local stfu-process-total-limit 100000)
+          (setq-local stfu-process-line-limit 5000)
+          ;; Small output that shouldn't be truncated
+          (comint-send-string (get-buffer-process buf) "echo hello\n")
+          ;; Wait for hello to appear
+          (stfu-process-test--wait-for-output buf "hello")
+          ;; Buffer should contain "hello" without truncation
+          (should (string-match-p "hello" (buffer-string)))
+          (should-not (string-match-p "truncated" (buffer-string))))
+      ;; Cleanup
+      (when (get-buffer-process buf)
+        (delete-process (get-buffer-process buf)))
+      (kill-buffer buf))))
+
 (provide 'stfu-process-test)
 ;;; stfu-process-test.el ends here
