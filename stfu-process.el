@@ -149,9 +149,7 @@ Note: backspaces after a newline in the same string are not fully handled."
 
 (defun stfu-process--get-suppression-length-str (str-len)
   "Generate a string showing the number (STR-LEN) of characters suppressed."
-  (concat "["
-          (number-to-string str-len)
-          " characters truncated]"))
+  (format "[%d chracters truncated]" str-len))
 
 (defun stfu-process--handle-too-long-output (str-len)
   "Handle output that has exceeded total limit.
@@ -208,7 +206,7 @@ backspaces in the string."
          (len-after-newline (- str-len last-newline-loc))
          ;; Each backspace doesn't add a char AND erases a previous char
          (num-backspaces (cl-count ?\b string))
-         (true-line-length (- (length string) (* 2 num-backspaces))))
+         (true-line-length (- str-len (* 2 num-backspaces))))
     (stfu-process--maybe-add-output-length string)
     (stfu-process--update-cur-line-length has-newline
                                           len-after-newline
