@@ -1,6 +1,6 @@
 ;;; stfu-process.el --- Truncate long output from processes -*- lexical-binding: t -*-
 
-;; Copyright (C) 2023 Dan Gillis
+;; Copyright (C) 2026 Dan Gillis
 
 ;; Author: Dan Gillis <dev@dangillis.net>
 ;; Version: 0.0.1
@@ -29,7 +29,20 @@
 
 
 ;;; Commentary:
-;; stfu-process-mode (Stop Text From Unterse Process)
+;; stfu-process-mode (Suppress Text From Unterse Process) is a minor mode that
+;; truncates long output from sub-processes to prevent Emacs from hanging due
+;; to long lines and unterminating stdout streams.
+;;
+;; This is particularly useful on Windows where processes are controlled by
+;; pipes rather than ptys, meaning Ctrl-C cannot stop output already in flight.
+;;
+;; Usage:
+;;   M-x stfu-process-mode    Enable in a comint buffer
+;;   M-x stfu-process-now     Immediately suppress output and interrupt process
+;;   M-x stfu-process-ignore  Immediately suppress output without interrupting
+;;
+;; Customize `stfu-process-total-limit' and `stfu-process-line-limit' to
+;; adjust when truncation kicks in.
 
 ;;; Code:
 
@@ -76,23 +89,32 @@ the new filter list.
 
 In the future, the integer may be used to place it in a specific place."
   :type '(choice (integer :tag "Placement in filter functions")
-                 (function :tag "Generate new fliter functions"))
+                 (function :tag "Generate new filter functions"))
   :group 'stfu-process)
 
 (defvar stfu-process-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-!") 'stfu-now)
-    map))
+    (define-key map (kbd "C-!") 'stfu-process-now)
+    map)
+  "Keymap for `stfu-process-mode'.")
 
-(defvar-local stfu-process--cur-output-length 0)
-(defvar-local stfu-process--cur-line-length 0)
+(defvar-local stfu-process--cur-output-length 0
+  "Accumulated output length since last prompt detection.
+This resets when a short string (likely a prompt) is received.")
 
-;; Really hacky of way trying to tell if an output string may be the prompt
+(defvar-local stfu-process--cur-line-length 0
+  "Current line length, accounting for backspaces.
+Resets when a newline is encountered.")
+
+;; Really hacky way of trying to tell if an output string may be the prompt
 ;; - (flawed) logic here: long outputs will tend to fill the pty/pipe output
 ;; - buffer and this value is far below that amount (typically 1024)
 ;; TODO: improve this
 ;; - a better solution might involve the buffer's comint-prompt-regexp
-(defvar-local stfu-process--min-output-len-nonprompt 50)
+(defvar-local stfu-process--min-output-len-nonprompt 50
+  "Minimum string length to be considered non-prompt output.
+Strings shorter than this reset the output length counter,
+on the assumption they are prompts rather than command output.")
 
 (defun stfu-process--reset-cur-output-length ()
   "Reset current output length."
@@ -125,7 +147,7 @@ Note: backspaces after a newline in the same string are not fully handled."
   "Check if current line is longer than line limit."
   (> stfu-process--cur-line-length stfu-process-line-limit))
 
-(defun stfu-process--get-supression-length-str (str-len)
+(defun stfu-process--get-suppression-length-str (str-len)
   "Generate a string showing the number (STR-LEN) of characters suppressed."
   (concat "["
           (number-to-string str-len)
@@ -135,7 +157,7 @@ Note: backspaces after a newline in the same string are not fully handled."
   "Handle output that has exceeded total limit.
 
 Take STR-LEN to generate information about suppressed text."
-  (concat (stfu-process--get-supression-length-str str-len)
+  (concat (stfu-process--get-suppression-length-str str-len)
           stfu-process-suppression-string))
 
 (defun stfu-process--handle-too-long-line (string true-str-len)
@@ -161,10 +183,10 @@ Take TRUE-STR-LEN to properly update line length."
 Under certain conditions (currently based on line length), the current output
 length will reset.  Otherwise, the length of the string is added to the output
 length."
-(if (stfu-process--should-reset-output-length-p string)
-    ;; possibly the prompt: reset-output length
-    (stfu-process--reset-cur-output-length)
-  (stfu-process--add-str-len-to-cur-output-length (length string))))
+  (if (stfu-process--should-reset-output-length-p string)
+      ;; possibly the prompt: reset-output length
+      (stfu-process--reset-cur-output-length)
+    (stfu-process--add-str-len-to-cur-output-length (length string))))
 
 (defun stfu-process--maybe-truncate-output (string true-line-length)
   "Truncate output when conditions are triggered based on STRING.
@@ -195,7 +217,7 @@ backspaces in the string."
 
 (defun stfu-process--append-preoutput-filter ()
   "Add the preoutput-filter to the end of the list of filter functions."
-  (append comint-preoutput-filter-functions #'(stfu-process-preoutput-filter)))
+  (append comint-preoutput-filter-functions (list #'stfu-process-preoutput-filter)))
 
 (defun stfu-process--prepend-preoutput-filter ()
   "Add the preoutput-filter to the beginning of the list of filter functions."
@@ -217,14 +239,6 @@ backspaces in the string."
   "Remove the preoutput-filter from the list of filter functions."
   (setq-local comint-preoutput-filter-functions
               (remq #'stfu-process-preoutput-filter comint-preoutput-filter-functions)))
-
-(defun stfu-process--set-cur-output (val)
-  "Set current total length to VAL."
-  (setq stfu-process--cur-output-length val))
-
-(defun stfu-process--set-cur-line (val)
-  "Set current line length to VAL."
-  (setq stfu-process--cur-line-length val))
 
 ;; TODO: Should filtration instead be toggled with flag?
 (defun stfu-process--set-cur-output-to-max ()
@@ -266,7 +280,7 @@ This will initiate the truncation process."
   "Toggle STFU Process mode.
 
 When enabled, STFU Process mode changes the process output
-filter to suppress output if prompt."
+filter to suppress output that exceeds specified maximum lengths."
   :init-value nil
   :lighter " STFU"
   :keymap stfu-process-mode-map
