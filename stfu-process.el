@@ -215,7 +215,8 @@ backspaces in the string."
 
 (defun stfu-process-remove-preoutput-filter ()
   "Remove the preoutput-filter from the list of filter functions."
-  (remq #'stfu-process-preoutput-filter comint-preoutput-filter-functions))
+  (setq-local comint-preoutput-filter-functions
+              (remq #'stfu-process-preoutput-filter comint-preoutput-filter-functions)))
 
 (defun stfu-process--set-cur-output (val)
   "Set current total length to VAL."
