@@ -4,7 +4,7 @@
 
 ;; Author: Dan Gillis <dev@dangillis.net>
 ;; Version: 0.0.1
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: processes
 ;; URL: https://github.com/drgillis/stfu-process
 
