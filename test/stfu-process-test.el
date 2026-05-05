@@ -87,6 +87,81 @@
       (let ((result (stfu-process-preoutput-filter (make-string 80 ?y))))
         (should (equal result (make-string 80 ?y)))))))
 
+;;; Backspace handling tests
+
+(ert-deftest stfu-process-test-backspace-reduces-line-length ()
+  "Backspaces should reduce tracked line length."
+  (with-temp-buffer
+    (comint-mode)
+    (stfu-process-mode 1)
+    (let ((stfu-process-total-limit 100000)
+          (stfu-process-line-limit 20))
+      (setq stfu-process--cur-output-length 0)
+      (setq stfu-process--cur-line-length 0)
+      ;; Print "hello" (5 chars), then backspace 3 and print "xyz" (3 chars)
+      ;; Net line length should be 5 (he + xyz)
+      (stfu-process-preoutput-filter "hello")
+      (should (= stfu-process--cur-line-length 5))
+      (stfu-process-preoutput-filter "\b\b\bxyz")
+      ;; 6 chars - 2*3 backspaces = 0 net change, so still 5
+      (should (= stfu-process--cur-line-length 5)))))
+
+(ert-deftest stfu-process-test-progress-bar-style-output ()
+  "Progress bar style output with backspaces should not trigger line limit."
+  (with-temp-buffer
+    (comint-mode)
+    (stfu-process-mode 1)
+    (let ((stfu-process-total-limit 100000)
+          (stfu-process-line-limit 30))
+      (setq stfu-process--cur-output-length 0)
+      (setq stfu-process--cur-line-length 0)
+      ;; Simulate progress: "Progress: 10%" then update to "20%", "30%", etc.
+      (stfu-process-preoutput-filter "Progress: 10%")
+      (should (= stfu-process--cur-line-length 13))
+      ;; Backspace over "10%" and write "20%"
+      (let ((result (stfu-process-preoutput-filter "\b\b\b20%")))
+        ;; Should pass through unchanged (no truncation)
+        (should (equal result "\b\b\b20%"))
+        ;; Line length should still be 13 (net change: 6 - 2*3 = 0)
+        (should (= stfu-process--cur-line-length 13)))
+      ;; Continue updating...
+      (stfu-process-preoutput-filter "\b\b\b30%")
+      (stfu-process-preoutput-filter "\b\b\b40%")
+      (stfu-process-preoutput-filter "\b\b\b50%")
+      ;; Line length should remain stable, not triggering the limit
+      (should (< stfu-process--cur-line-length stfu-process-line-limit)))))
+
+(ert-deftest stfu-process-test-backspace-line-length-floor-zero ()
+  "Line length should not go negative with excessive backspaces."
+  (with-temp-buffer
+    (comint-mode)
+    (stfu-process-mode 1)
+    (let ((stfu-process-total-limit 100000)
+          (stfu-process-line-limit 100))
+      (setq stfu-process--cur-output-length 0)
+      (setq stfu-process--cur-line-length 0)
+      ;; Print short text then many backspaces
+      (stfu-process-preoutput-filter "hi")
+      (should (= stfu-process--cur-line-length 2))
+      ;; 10 backspaces would try to make length negative
+      (stfu-process-preoutput-filter "\b\b\b\b\b\b\b\b\b\b")
+      ;; Should floor at 0
+      (should (= stfu-process--cur-line-length 0)))))
+
+(ert-deftest stfu-process-test-mixed-text-and-backspaces ()
+  "Mixed text and backspaces in same string should be handled."
+  (with-temp-buffer
+    (comint-mode)
+    (stfu-process-mode 1)
+    (let ((stfu-process-total-limit 100000)
+          (stfu-process-line-limit 100))
+      (setq stfu-process--cur-output-length 0)
+      (setq stfu-process--cur-line-length 0)
+      ;; "abc\b\b\bxyz" = erase abc, write xyz, net 3 chars
+      (stfu-process-preoutput-filter "abc\b\b\bxyz")
+      ;; Length: 9 chars - 2*3 backspaces = 3
+      (should (= stfu-process--cur-line-length 3)))))
+
 ;;; Filter placement tests (from stfu-process--add-preoutput-filter.el)
 
 (defun stfu-process--test-custom-placement (current-filter-list preoutput-filter)
